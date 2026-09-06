@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="hy">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Հրավեր հարսանիքի</title>
+
+<!-- Google Fonts: Noto Serif Armenian handles the Armenian body/heading text,
+     Cormorant Garamond (italic) is used for the small latin script accents
+     (numbers, "Scroll", monogram) — mirrors the calligraphic feel without
+     needing a font with Armenian glyphs. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,500;1,600&family=Noto+Serif+Armenian:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ============================================================
+   0. DESIGN TOKENS
+   Change the palette / spacing here and it propagates everywhere.
+   ============================================================ */
+:root{
+  --ink:        #2A1C12;   /* deep bark brown — envelope, dark text */
+  --ink-soft:   #4A3323;   /* lighter brown for panels */
+  --cream:      #F4EEDD;   /* warm ivory — main background */
+  --cream-dim:  #EAE1C9;   /* slightly deeper ivory for cards */
+  --gold:       #AD8A54;   /* muted brass accent */
+  --gold-deep:  #8A6B3B;
+  --wax:        #E9DFC5;   /* wax seal colour */
+  --line:       rgba(173,138,84,.35);
+
+  --font-arm:  'Noto Serif Armenian', serif;
+  --font-script: 'Cormorant Garamond', serif;
+
+  --max-w: 460px; /* card-like column width, evokes a printed invitation */
+}
+
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  margin:0;
+  background:var(--cream);
+  color:var(--ink);
+  font-family:var(--font-arm);
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+img{max-width:100%; display:block;}
+button{font-family:inherit; cursor:pointer;}
+:focus-visible{outline:2px solid var(--gold-deep); outline-offset:3px;}
+
+.wrap{max-width:var(--max-w); margin:0 auto; padding:0 28px;}
+
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:.001ms !important; transition-duration:.001ms !important;}
+}
+
+/* ============================================================
+   1. ENVELOPE (first screen)
+   ============================================================ */
+#envelope-screen{
+  position:fixed; inset:0;
+  background:var(--ink);
+  display:flex; flex-direction:column;
+  z-index:50;
+  overflow:hidden;
+}
+
+.flap{
+  flex:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+  transition:transform .9s cubic-bezier(.65,0,.35,1), opacity .9s ease;
+}
+
+.flap-top{
+  background:linear-gradient(180deg, #33231A 0%, var(--ink) 100%);
+  padding-top:14vh;
+}
+.flap-bottom{
+  background:linear-gradient(0deg, #33231A 0%, var(--ink) 100%);
+  padding-bottom:8vh;
+}
+
+/* soft diagonal fold-lines, purely decorative, suggest an envelope back */
+.flap-top::after, .flap-bottom::after{
+  content:"";
+  position:absolute; left:0; right:0;
+  height:1px;
+  background:linear-gradient(90deg, transparent, var(--line), transparent);
+}
+.flap-top::after{ bottom:0; }
+.flap-bottom::after{ top:0; }
+
+.invite-text{
+  text-align:center;
+  color:var(--cream);
+  font-size:1.5rem;
+  line-height:1.55;
+  padding:0 20px;
+  max-width:340px;
+  margin:0 auto 120px; /* pushes the headline upward, clear of the tap-hint below */
+}
+
+.tap-hint{
+  position:absolute;
+  bottom: 100px; /* measured from the seam, so it always clears the 130px seal circle */
+  left:50%;
+  transform:translateX(-50%);
+  text-align:center;
+  color:var(--gold);
+  font-family:var(--font-script);
+  font-style:italic;
+  font-size:1.15rem;
+  line-height:1.3;
+}
+.tap-hint svg{ margin-top:0px; animation:bob 1.8s ease-in-out infinite; }
+@keyframes bob{ 0%,100%{transform:translateY(0);} 20%{transform:translateY(5px);} }
+
+/* the wax-seal button sits at the seam between the two flaps */
+#seal-btn{
+  position:absolute;
+  top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  width:130px; height:130px;
+  border-radius:50%;
+  border:none;
+  background:
+    radial-gradient(circle at 32% 28%, #FBF6E9 0%, var(--wax) 45%, #D9C89C 100%);
+  box-shadow:0 10px 24px rgba(0,0,0,.45), inset 0 0 0 6px rgba(255,255,255,.15);
+  color:var(--ink-soft);
+  font-family:var(--font-script);
+  font-style:italic;
+  font-size:1.05rem;
+  line-height:1.25;
+  z-index:2;
+  transition:transform .5s ease;
+}
+#seal-btn:hover{ transform:translate(-50%,-50%) scale(1.04); }
+#seal-btn:active{ transform:translate(-50%,-50%) scale(.97); }
+
+.envelope-footer{
+  color:var(--gold);
+  font-size:.82rem;
+  line-height:1.6;
+  text-align:center;
+  max-width:300px;
+  opacity:.85;
+}
+
+/* opening animation state, toggled by JS */
+#envelope-screen.is-opening .flap-top{ transform:translateY(-115%); opacity:0; }
+#envelope-screen.is-opening .flap-bottom{ transform:translateY(115%); opacity:0; }
+#envelope-screen.is-hidden{ display:none; }
+
+/* ============================================================
+   2. SCROLL-DOWN HINT (shown right after the envelope opens)
+   ============================================================ */
+#scroll-hint{
+  position:fixed;
+  left:50%; bottom:34px;
+  transform:translateX(-50%);
+  z-index:40;
+  color:var(--cream);
+  text-align:center;
+  font-family:var(--font-script);
+  font-style:italic;
+  font-size:1.2rem;
+  pointer-events:none;
+  opacity:0;
+  transition:opacity .6s ease;
+}
+#scroll-hint.is-visible{ opacity:1; }
+#scroll-hint.is-fading{ opacity:0; }
+#scroll-hint svg{ margin:6px auto 0; display:block; animation:scrollArrow 1.6s ease-in-out infinite; }
+@keyframes scrollArrow{ 0%,100%{transform:translateY(0); opacity:.4;} 50%{transform:translateY(10px); opacity:1;} }
+
+/* ============================================================
+   3. MAIN CONTENT
+   ============================================================ */
+#site{
+  opacity:0;
+  transition:opacity 1s ease;
+}
+#site.is-visible{ opacity:1; }
+
+section{ padding:64px 0; }
+
+/* --- Hero --- */
+#hero{
+  position:relative;
+  min-height:100vh;
+  display:flex; align-items:center; justify-content:center;
+  background-color:var(--ink);
+  background-size:cover; background-position:center;
+  color:var(--cream);
+  text-align:center;
+  padding:32px 0;
+}
+#hero::before{
+  content:"";
+  position:absolute; inset:0;
+  background:linear-gradient(180deg, rgba(42,28,18,.55), rgba(42,28,18,.75));
+}
+.hero-inner{ position:relative; z-index:1; }
+.hero-eyebrow{
+  font-family:var(--font-script); font-style:italic;
+  color:var(--gold); font-size:1.1rem; letter-spacing:.02em;
+}
+.hero-date{
+  font-family:var(--font-script);
+  font-size:3rem;
+  margin:.3em 0;
+}
+.hero-names{
+  font-size:1.4rem;
+  margin-top:.4em;
+}
+
+/* --- generic section heading --- */
+.section-title{
+  font-size:1.7rem;
+  text-align:center;
+  margin:0 0 .3em;
+}
+.section-sub{
+  text-align:center;
+  color:var(--ink-soft);
+  font-size:1.02rem;
+  line-height:1.7;
+  margin:0 auto 2.2em;
+  max-width:34ch;
+}
+.divider{
+  width:56px; height:1px; margin:18px auto;
+  background:var(--gold);
+}
+
+/* --- Couple / story section --- */
+.couple-photo{
+  position:relative;
+  margin:0 auto 2rem;
+  max-width:280px;
+}
+.couple-photo img{
+  border-radius:2px;
+  box-shadow:0 18px 40px rgba(42,28,18,.25);
+}
+.couple-photo::after{ /* small corner accent, like a photo-corner */
+  content:"";
+  position:absolute; right:-10px; bottom:-10px;
+  width:46px; height:46px;
+  border-right:1px solid var(--gold);
+  border-bottom:1px solid var(--gold);
+}
+
+/* --- Save-the-date strip --- */
+.calendar{ margin-top:2rem; }
+.calendar-weekdays{
+  display:grid; grid-template-columns:repeat(7,1fr);
+  gap:6px; margin-bottom:10px;
+}
+.calendar-weekdays span{
+  text-align:center; font-size:.72rem; color:var(--gold-deep);
+}
+.calendar-days{
+  display:grid; grid-template-columns:repeat(7,1fr);
+  gap:6px;
+}
+.date-cell{
+  aspect-ratio:1;
+  border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:.82rem;
+  color:var(--ink-soft);
+  border:1px solid var(--line);
+}
+.date-cell.is-empty{ border:none; }
+.date-cell.is-day{
+  background:var(--gold);
+  color:var(--cream);
+  border-color:var(--gold);
+  font-weight:600;
+}
+
+/* --- Dress code --- */
+.palette{
+  display:flex; justify-content:center; gap:14px;
+  margin-top:1.8rem; flex-wrap:wrap;
+}
+.palette span{
+  width:34px; height:34px; border-radius:50%;
+  display:inline-block;
+  border:2px solid var(--cream);
+  box-shadow:0 2px 8px rgba(42,28,18,.18);
+}
+
+/* --- Program / timeline --- */
+.program-item{
+  border-top:1px solid var(--line);
+  padding:2.4rem 0;
+  text-align:center;
+}
+.program-item:last-child{ border-bottom:1px solid var(--line); }
+.program-time{
+  font-family:var(--font-script);
+  font-style:italic;
+  font-size:2rem;
+  color:var(--gold-deep);
+}
+.program-name{ font-size:1.2rem; margin:.2em 0 .1em; }
+.program-place{ color:var(--ink-soft); font-size:.95rem; margin-bottom:1.1em; }
+.program-photo{
+  margin:0 auto 1.2em;
+  max-width:280px;
+  border-radius:2px;
+  overflow:hidden;
+  box-shadow:0 14px 30px rgba(42,28,18,.2);
+}
+
+.map-btn{
+  display:inline-block;
+  padding:11px 26px;
+  border:1px solid var(--gold-deep);
+  background:transparent;
+  color:var(--ink);
+  font-size:.92rem;
+  text-decoration:none;
+  border-radius:30px;
+  transition:background .3s ease, color .3s ease;
+}
+.map-btn:hover{ background:var(--gold-deep); color:var(--cream); }
+
+/* --- RSVP --- */
+#rsvp{ background:var(--ink); color:var(--cream); }
+#rsvp .section-title, #rsvp .divider{ color:var(--cream); }
+#rsvp .divider{ background:var(--gold); }
+
+.rsvp-form{ margin-top:2rem; }
+.field{ margin-bottom:1.6rem; }
+.field label{
+  display:block;
+  font-size:.85rem;
+  color:var(--gold);
+  margin-bottom:.5em;
+  font-family:var(--font-script);
+  font-style:italic;
+  font-size:1.05rem;
+}
+.field input[type="text"]{
+  width:100%;
+  background:transparent;
+  border:none;
+  border-bottom:1px solid var(--line);
+  color:var(--cream);
+  font-family:var(--font-arm);
+  font-size:1rem;
+  padding:.6em 0;
+}
+.field input[type="text"]::placeholder{ color:rgba(244,238,221,.4); }
+
+/* attendance toggle */
+.toggle-group{
+  display:flex; gap:10px;
+}
+.toggle-group input{ display:none; }
+.toggle-group label{
+  flex:1;
+  text-align:center;
+  padding:12px 8px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  font-size:.92rem;
+  color:var(--cream);
+  transition:background .25s ease, border-color .25s ease;
+}
+.toggle-group input:checked + label{
+  background:var(--gold);
+  border-color:var(--gold);
+  color:var(--ink);
+}
+
+/* guest counter (stepper) */
+.counter{
+  display:flex; align-items:center; justify-content:space-between;
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:8px 8px 8px 18px;
+}
+.counter span{ font-size:.98rem; }
+.counter-controls{ display:flex; align-items:center; gap:0; }
+.counter-btn{
+  width:34px; height:34px;
+  border-radius:50%;
+  border:1px solid var(--gold);
+  background:transparent;
+  color:var(--cream);
+  font-size:1.1rem;
+  line-height:1;
+  display:flex; align-items:center; justify-content:center;
+}
+.counter-btn:hover{ background:var(--gold); color:var(--ink); }
+.counter-value{
+  width:36px; text-align:center; font-size:1.05rem;
+}
+
+.submit-btn{
+  width:100%;
+  padding:14px;
+  margin-top:.6rem;
+  background:var(--gold);
+  border:none;
+  border-radius:30px;
+  color:var(--ink);
+  font-size:1rem;
+  letter-spacing:.01em;
+}
+.submit-btn:hover{ background:var(--cream); }
+
+.rsvp-note{
+  margin-top:1.2rem;
+  font-size:.85rem;
+  color:rgba(244,238,221,.6);
+  text-align:center;
+  min-height:1.4em;
+}
+
+footer{
+  text-align:center;
+  padding:34px 0 46px;
+  font-family:var(--font-script);
+  font-style:italic;
+  color:var(--gold-deep);
+  font-size:1.3rem;
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     ENVELOPE SCREEN
+     ============================================================ -->
+<div id="envelope-screen">
+
+  <div class="flap flap-top">
+    <p class="invite-text">Դուք հրավիրված եք մեր հարսանիքին</p>
+    <div class="tap-hint">
+      Սեղմեք կնիքին
+      <svg width="22" height="34" viewBox="0 0 22 34" fill="none">
+        <path d="M11 1V29M11 29L2 20M11 29L20 20" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- wax seal / open button, sits on the seam of the two flaps -->
+  <button id="seal-btn" type="button" aria-label="Բացել հրավերը">Մ &amp; Ա</button>
+
+  <div class="flap flap-bottom">
+    <p class="envelope-footer">
+      Այս հրավերը Ձեր պատրաստական չեք ստացել։<br>
+      Մեզ համար հաճելի կլինի, եթե այս հրավերը<br>
+      մեր կողքին լինեն ամենակարեւոր պահին։
+    </p>
+  </div>
+</div>
+
+<!-- shown for a few seconds right after the envelope opens -->
+<div id="scroll-hint">
+  Scroll
+  <svg width="14" height="46" viewBox="0 0 14 46" fill="none">
+    <line x1="7" y1="0" x2="7" y2="38" stroke="currentColor" stroke-width="1"/>
+    <path d="M1 32 L7 42 L13 32" stroke="currentColor" stroke-width="1" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+</div>
+
+<!-- ============================================================
+     MAIN SITE CONTENT
+     ============================================================ -->
+<div id="site">
+
+  <!-- ---------- HERO ---------- -->
+  <section id="hero">
+    <div class="hero-inner wrap">
+      <p class="hero-eyebrow">Save the date</p>
+      <p class="hero-date">10.10.2026</p>
+      <p class="hero-names">Միլենա &amp; Արեն</p>
+    </div>
+  </section>
+
+  <!-- ---------- COUPLE / STORY ---------- -->
+  <section id="couple">
+    <div class="wrap">
+      <h2 class="section-title">Միլենա եւ Արեն</h2>
+      <div class="divider"></div>
+      <p class="section-sub">
+        Մեծ ուրախությամբ հայտնում ենք, որ որոշել ենք կապել մեր
+        ճակատագրերը եւ կհրավիրենք Ձեզ կիսելու այս կարեւոր օրը մեզ հետ։
+      </p>
+      <figure class="couple-photo">
+        <img id="couple-photo-img" src="" alt="Միլենա եւ Արեն">
+      </figure>
+    </div>
+  </section>
+
+  <!-- ---------- SAVE THE DATE STRIP ---------- -->
+  <section id="save-the-date">
+    <div class="wrap">
+      <h2 class="section-title">Հարսանիքի օրը</h2>
+      <p class="section-sub">Հոկտեմբերի 10, 2026 — շաբաթ օր</p>
+      <div class="calendar">
+        <div class="calendar-weekdays">
+          <span>Երկ</span><span>Երք</span><span>Չրք</span><span>Հնգ</span><span>Ուրբ</span><span>Շբթ</span><span>Կիր</span>
+        </div>
+        <!-- filled by JS: a full month grid, built from CONFIG.WEDDING_YEAR / WEDDING_MONTH -->
+        <div class="calendar-days" id="calendar-days"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- PROGRAM OF THE DAY ---------- -->
+  <section id="program">
+    <div class="wrap">
+      <h2 class="section-title">Օրվա ծրագիրը</h2>
+      <div class="divider"></div>
+
+      <!-- program items are generated from CONFIG.PROGRAM by JS,
+           so adding / editing an event only means editing the CONFIG array below -->
+      <div id="program-list"></div>
+    </div>
+  </section>
+
+  <!-- ---------- DRESS CODE ---------- -->
+  <section id="dress-code">
+    <div class="wrap">
+      <h2 class="section-title">Դրես կոդ</h2>
+      <div class="divider"></div>
+      <p class="section-sub" id="dress-code-text"></p>
+      <!-- suggested colour palette, filled from CONFIG.DRESS_CODE.palette -->
+      <div class="palette" id="palette"></div>
+    </div>
+  </section>
+
+  <!-- ---------- RSVP ---------- -->
+  <section id="rsvp">
+    <div class="wrap">
+      <h2 class="section-title">Հաստատեք Ձեր մասնակցությունը</h2>
+      <div class="divider"></div>
+      <p class="section-sub" style="color:rgba(244,238,221,.75)">
+        Խնդրում ենք հաստատել Ձեր ներկայությունը մինչեւ 20.09.2026
+      </p>
+
+      <form class="rsvp-form" id="rsvp-form">
+
+        <div class="field">
+          <label for="guest-name">Անուն Ազգանուն</label>
+          <input type="text" id="guest-name" name="guest-name" placeholder="Ձեր անուն ազգանունը" required>
+        </div>
+
+        <div class="field">
+          <label>Կմասնակցե՞ք</label>
+          <div class="toggle-group">
+            <input type="radio" id="attend-yes" name="attendance" value="yes" checked>
+            <label for="attend-yes">Կգանք</label>
+
+            <input type="radio" id="attend-no" name="attendance" value="no">
+            <label for="attend-no">Չենք կարող գալ</label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Ուղեկցող հյուրերի քանակը</label>
+          <div class="counter">
+            <span id="counter-label">0 հյուր</span>
+            <div class="counter-controls">
+              <button type="button" class="counter-btn" id="counter-minus" aria-label="Պակասեցնել">−</button>
+              <span class="counter-value" id="counter-value">0</span>
+              <button type="button" class="counter-btn" id="counter-plus" aria-label="Ավելացնել">+</button>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="submit-btn">Հաստատել</button>
+        <p class="rsvp-note" id="rsvp-note"></p>
+      </form>
+    </div>
+  </section>
+
+  <footer>Սիրով սպասում ենք Ձեզ</footer>
+
+</div>
+
+<script>
+/* ============================================================
+   CONFIG — every image, link and content list the couple would
+   want to swap out lives here. Nothing below this object needs
+   to be touched for normal customisation.
+   ============================================================ */
+const CONFIG = {
+
+  // Hero background photo (shown behind the "Save the date" text)
+  HERO_IMAGE: "18.jpg",
+
+  // Couple portrait shown in the "story" section
+  COUPLE_IMAGE: "9.jpg",
+
+  // Fallback image used automatically if any photo above fails to load
+  FALLBACK_IMAGE: "https://images.unsplash.com/photo-1519225421980-715cb0215aed?q=80&w=800&auto=format&fit=crop",
+
+  // Which day/month/year to highlight on the full-month calendar
+  WEDDING_YEAR: 2026,
+  WEDDING_MONTH: 10,   // 1 = January … 12 = December
+  WEDDING_DAY: 10,
+
+  // Dress code text + suggested colour palette (shown as small swatches)
+  DRESS_CODE: {
+    text: "Կխնդրենք հյուրերին խուսափել սպիտակ և սեւ գույներից՝ դրանք թողնելով հարսին ու փեսային։ Նախընտրելի է հանդիսավոր, երեկոյան հագուստ։",
+    palette: ["#AD8A54", "#EAE1C9", "#8A6B3B", "#4A3323", "#2A1C12"]
+  },
+
+  // The day's schedule. Add / remove / reorder objects here and the
+  // "Program of the day" section rebuilds itself automatically.
+  // `mapUrl` is any external map link (Google Maps / Yandex Maps / 2GIS…).
+  PROGRAM: [
+    {
+      time: "11:00",
+      title: "Հարսի և փեսայի հանդիպում",
+      place: "Աբելյան Թատրոն",
+      photo: "11.jpg",
+      mapUrl: "https://maps.apple/p/1u4MRF1_AVIuxs"
+    },
+    {
+      time: "13:30",
+      title: "Պսակադրություն",
+      place: "Հաղարծին եկեղեցի",
+      photo: "10.jpg",
+      mapUrl: "https://maps.app.goo.gl/ELmAukfjLGRuP2eS8?g_st=ac"
+    },
+    {
+      time: "16:30",
+      title: "Հարսանեկան խնջույք",
+      place: "Milagro Restaurant",
+      photo: "12.jpg",
+      mapUrl: "https://maps.apple/p/bAu~8Xot5.FKpU"
+    }
+  ],
+
+  TELEGRAM_BOT_TOKEN: "8835994243:AAHqOy8zKvPVmlsGsPbl_PGzPYeMPdS1f9o",
+  TELEGRAM_CHAT_ID: "8903922810"
+};
+
+/* ============================================================
+   1. BUILD DYNAMIC CONTENT FROM CONFIG
+   ============================================================ */
+// small helper: swap in a fallback photo if the configured one fails to load
+function withFallback(img){
+  img.addEventListener("error", () => { img.src = CONFIG.FALLBACK_IMAGE; }, { once:true });
+}
+
+document.getElementById("hero").style.backgroundImage = `url("${CONFIG.HERO_IMAGE}")`;
+const heroProbe = new Image();
+heroProbe.onerror = () => { document.getElementById("hero").style.backgroundImage = `url("${CONFIG.FALLBACK_IMAGE}")`; };
+heroProbe.src = CONFIG.HERO_IMAGE;
+
+const coupleImg = document.getElementById("couple-photo-img");
+coupleImg.src = CONFIG.COUPLE_IMAGE;
+withFallback(coupleImg);
+
+// full-month "save the date" calendar, built from CONFIG.WEDDING_YEAR / MONTH
+const calendarDays = document.getElementById("calendar-days");
+const daysInMonth = new Date(CONFIG.WEDDING_YEAR, CONFIG.WEDDING_MONTH, 0).getDate();
+// JS getDay(): 0=Sunday..6=Saturday — convert to a Monday-first index (0=Mon..6=Sun)
+const firstWeekday = (new Date(CONFIG.WEDDING_YEAR, CONFIG.WEDDING_MONTH - 1, 1).getDay() + 6) % 7;
+
+for (let i = 0; i < firstWeekday; i++){
+  const empty = document.createElement("div");
+  empty.className = "date-cell is-empty";
+  calendarDays.appendChild(empty);
+}
+for (let day = 1; day <= daysInMonth; day++){
+  const cell = document.createElement("div");
+  cell.className = "date-cell" + (day === CONFIG.WEDDING_DAY ? " is-day" : "");
+  cell.textContent = day;
+  calendarDays.appendChild(cell);
+}
+
+// dress code text + colour palette
+document.getElementById("dress-code-text").textContent = CONFIG.DRESS_CODE.text;
+const palette = document.getElementById("palette");
+CONFIG.DRESS_CODE.palette.forEach(color => {
+  const swatch = document.createElement("span");
+  swatch.style.background = color;
+  palette.appendChild(swatch);
+});
+
+// program list
+const programList = document.getElementById("program-list");
+CONFIG.PROGRAM.forEach(item => {
+  const el = document.createElement("div");
+  el.className = "program-item";
+  el.innerHTML = `
+    <p class="program-time">${item.time}</p>
+    <p class="program-name">${item.title}</p>
+    <p class="program-place">${item.place}</p>
+    <div class="program-photo"><img src="${item.photo}" alt="${item.title}"></div>
+    <a class="map-btn" href="${item.mapUrl}" target="_blank" rel="noopener">Բացել քարտեզը</a>
+  `;
+  withFallback(el.querySelector("img"));
+  programList.appendChild(el);
+});
+
+/* ============================================================
+   2. ENVELOPE OPEN ANIMATION
+   ============================================================ */
+const envelope   = document.getElementById("envelope-screen");
+const sealBtn    = document.getElementById("seal-btn");
+const scrollHint = document.getElementById("scroll-hint");
+const site       = document.getElementById("site");
+
+sealBtn.addEventListener("click", () => {
+  envelope.classList.add("is-opening");
+
+  // wait for the flap transition to finish, then swap screens
+  window.setTimeout(() => {
+    envelope.classList.add("is-hidden");
+    site.classList.add("is-visible");
+    document.body.style.overflow = "auto";
+
+    scrollHint.classList.add("is-visible");
+    // auto-hide the scroll hint after a few seconds even if the
+    // user hasn't scrolled yet
+    window.setTimeout(hideScrollHint, 4500);
+  }, 900);
+});
+
+// lock scrolling while the envelope is showing
+document.body.style.overflow = "hidden";
+
+function hideScrollHint(){
+  scrollHint.classList.remove("is-visible");
+  scrollHint.classList.add("is-fading");
+}
+window.addEventListener("scroll", () => {
+  if (site.classList.contains("is-visible")) hideScrollHint();
+}, { passive: true });
+
+/* ============================================================
+   3. RSVP FORM — guest counter + submit
+   ============================================================ */
+let guestCount = 0;
+const counterValue = document.getElementById("counter-value");
+const counterLabel = document.getElementById("counter-label");
+const MAX_GUESTS = 10;
+
+function renderCounter(){
+  counterValue.textContent = guestCount;
+  counterLabel.textContent = guestCount === 0
+    ? "0 հյուր"
+    : `${guestCount} հյուր`;
+}
+
+document.getElementById("counter-plus").addEventListener("click", () => {
+  if (guestCount < MAX_GUESTS){ guestCount++; renderCounter(); }
+});
+document.getElementById("counter-minus").addEventListener("click", () => {
+  if (guestCount > 0){ guestCount--; renderCounter(); }
+});
+
+document.getElementById("rsvp-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+
+  const name = document.getElementById("guest-name").value.trim();
+  const attending = document.querySelector('input[name="attendance"]:checked').value;
+  const note = document.getElementById("rsvp-note");
+
+  // -----------------------------------------------------------
+  // INTEGRATION POINT: this is where you'd send the RSVP to a
+  // backend, e.g.:
+  //
+  // fetch("https://your-api.example.com/rsvp", {
+  //   method: "POST",
+  //   headers: { "Content-Type": "application/json" },
+  //   body: JSON.stringify({ name, attending, guestCount })
+  // });
+  // -----------------------------------------------------------
+  const telegramIsConfigured =
+    CONFIG.TELEGRAM_BOT_TOKEN && !CONFIG.TELEGRAM_BOT_TOKEN.startsWith("ВСТАВЬТЕ") &&
+    CONFIG.TELEGRAM_CHAT_ID  && !String(CONFIG.TELEGRAM_CHAT_ID).startsWith("ВСТАВЬТЕ");
+
+  if (telegramIsConfigured){
+    const message =
+      `Новая заявка на свадьбу\n` +
+      `Имя: ${name}\n` +
+      `Придёт: ${attending === "yes" ? "Да" : "Нет"}\n` +
+      `Сопровождающих: ${guestCount}`;
+
+    fetch(`https://api.telegram.org/bot${CONFIG.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: CONFIG.TELEGRAM_CHAT_ID,
+        text: message
+      })
+    }).catch(err => console.error("Не удалось отправить заявку в Telegram:", err));
+  }
+
+  note.textContent = attending === "yes"
+    ? `Շնորհակալություն, ${name}! Սպասում ենք Ձեզ։`
+    : `Շնորհակալություն, ${name}, որ տեղեկացրիք։`;
+});
+</script>
+</body>
+</html>
