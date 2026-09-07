@@ -285,16 +285,6 @@ section{ padding:64px 0; }
 }
 
 /* --- Dress code --- */
-.palette{
-  display:flex; justify-content:center; gap:14px;
-  margin-top:1.8rem; flex-wrap:wrap;
-}
-.palette span{
-  width:34px; height:34px; border-radius:50%;
-  display:inline-block;
-  border:2px solid var(--cream);
-  box-shadow:0 2px 8px rgba(42,28,18,.18);
-}
 
 /* --- Program / timeline --- */
 .program-item{
@@ -533,7 +523,7 @@ footer{
   <!-- ---------- DRESS CODE ---------- -->
   <section id="dress-code">
     <div class="wrap">
-      <h2 class="section-title">Մանրամասներ </h2>
+      <h2 class="section-title">Մանրամասներ</h2>
       <div class="divider"></div>
       <p class="section-sub" id="dress-code-text"></p>
       <!-- suggested colour palette, filled from CONFIG.DRESS_CODE.palette -->
@@ -614,11 +604,8 @@ const CONFIG = {
 
   // Dress code text + suggested colour palette (shown as small swatches)
   DRESS_CODE: {
-    text: "
-Ձեզ հետ բերեք ՍԵՐ, ժպիտներ ու անսահման դրական էմոցիաներ։Թույլ տանք, որ այդ օրը սպիտակ զգեստով լինի միայն հարսնացուն 🤍
-     <br>
-Անհամբեր սպասում ենք ձեզ մեր հարսանիքին։։",
-   
+     text: "Ձեզ հետ բերեք ՍԵՐ, ժպիտներ ու անսահման դրական էմոցիաներ։Թույլ տանք, որ այդ օրը սպիտակ զգեստով լինի միայն հարսնացուն 🤍։ Նախընտրելի է հանդիսավոր, երեկոյան հագուստ։",
+    palette: ["#AD8A54", "#EAE1C9", "#8A6B3B", "#4A3323", "#2A1C12"]
   },
 
   // The day's schedule. Add / remove / reorder objects here and the
